@@ -10,18 +10,33 @@
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="wrap_content"
-        android:layout_height="61dp"
-        android:layout_marginBottom="102dp"
-        app:layout_constraintBottom_toTopOf="@+id/imageButton"
+        android:layout_height="60dp"
+        android:layout_marginBottom="43dp"
+        app:layout_constraintBottom_toTopOf="@+id/pressHere"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/library" />
 
     <TextView
+        android:id="@+id/pressHere"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="31dp"
+        android:text="Press Logo to Continue"
+        android:textColor="@android:color/background_dark"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/startlogo"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageView"
+        tools:ignore="HardcodedText" />
+
+    <TextView
         android:id="@+id/editText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="35dp"
+        android:layout_marginBottom="30dp"
         android:ems="10"
         android:fontFamily="casual"
         android:text="Application that provides extra level of security through the use of Bluetooth."
@@ -31,18 +46,18 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageButton" />
+        app:layout_constraintTop_toBottomOf="@+id/startlogo" />
 
     <ImageButton
-        android:id="@+id/imageButton"
+        android:id="@+id/startlogo"
         android:layout_width="174dp"
-        android:layout_height="139dp"
-        android:layout_marginBottom="106dp"
+        android:layout_height="0dp"
+        android:layout_marginBottom="101dp"
         android:background="@android:color/transparent"
         app:layout_constraintBottom_toTopOf="@+id/editText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView"
+        app:layout_constraintTop_toBottomOf="@+id/pressHere"
         app:srcCompat="@drawable/sdcodelogo" />
 
 </android.support.constraint.ConstraintLayout>
