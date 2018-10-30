@@ -1,133 +1,164 @@
 package com.example.android.sdcodev1;
 
 import android.bluetooth.BluetoothAdapter;
-import android.content.BroadcastReceiver;
-import android.content.Context;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
+import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.Button;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.widget.TextView;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.UUID;
+
+
 
 
 public class devices extends AppCompatActivity {
+    TextView out;
+    private static final int REQUEST_ENABLE_BT= 1;
+    private BluetoothAdapter btAdapter = null;
+    private BluetoothSocket btSocket  = null;
+    private OutputStream outStream = null; // to be changed by textView
 
-    private static final String TAG = "devices";
-
-    BluetoothAdapter mBluetoothAdapter; // bluetooth adapter
-    Button btnEnableDisable_Discoverable; // bluetooth receiver
-
-    // create a broadcastReceiver for action_found
-    // Debug purposes
-    private final BroadcastReceiver mBroadcastReciver1 = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if(action.equals(mBluetoothAdapter.ACTION_STATE_CHANGED)){
-                final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,mBluetoothAdapter.ERROR);
-
-                switch (state)
-                {
-                    case BluetoothAdapter.STATE_OFF:
-                        Log.d(TAG,"onReceive: STATE OFF");
-                        break;
-                    case BluetoothAdapter.STATE_TURNING_OFF:
-                        Log.d(TAG,"mBroadcastReceiver1: STATE OFF");
-                        break;
-                    case BluetoothAdapter.STATE_ON:
-                        Log.d(TAG,"mBroadcastReceiver1: STATE ON");
-                        break;
-                    case BluetoothAdapter.STATE_TURNING_ON:
-                        Log.d(TAG,"mBroadcastReceiver1: STATE TURNING ON");
-                        break;
-                }
-            }
-        }
-    };
-    private final BroadcastReceiver mBroadcastReceiver2 = new BroadcastReceiver() {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-
-            if (action.equals(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED)) {
-
-                int mode = intent.getIntExtra(BluetoothAdapter.EXTRA_SCAN_MODE, BluetoothAdapter.ERROR);
-
-                // Debug purposes
-                switch (mode) {
-                    //Device is in Discoverable Mode
-                    case BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE:
-                        Log.d(TAG, "mBroadcastReceiver2: Discoverability Enabled.");
-                        break;
-                    //Device not in discoverable mode
-                    case BluetoothAdapter.SCAN_MODE_CONNECTABLE:
-                        Log.d(TAG, "mBroadcastReceiver2: Discoverability Disabled. Able to receive connections.");
-                        break;
-                    case BluetoothAdapter.SCAN_MODE_NONE:
-                        Log.d(TAG, "mBroadcastReceiver2: Discoverability Disabled. Not able to receive connections.");
-                        break;
-                    case BluetoothAdapter.STATE_CONNECTING:
-                        Log.d(TAG, "mBroadcastReceiver2: Connecting....");
-                        break;
-                    case BluetoothAdapter.STATE_CONNECTED:
-                        Log.d(TAG, "mBroadcastReceiver2: Connected.");
-                        break;
-                }
-
-            }
-        }
-    };
+    // WELL known Java Server Side Parameters Universally unique identifier (UUID)
+    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+   // Insert your server's MAC address
+    // THIS ONE HAS TO BE CORRECT, OTHERWISE IT WILL CRASH THE APPLICATION
+    private static String address = "BC:A8:A6:B4:1A:DA";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_devices);
-        Button btnONOFF = (Button)findViewById(R.id.btnONOFF); //create Button object
-        btnEnableDisable_Discoverable = (Button)findViewById(R.id.btnDiscoverable_on_off);
 
-/*  The BluetoothAdapter lets you perform fundamental Bluetooth tasks, such as initiate device discovery, query a list of bonded (paired) devices*/
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        out = (TextView) findViewById(R.id.out);
+        
+        out.setText("\n ... In on Create()...");
+        
+        btAdapter = BluetoothAdapter.getDefaultAdapter();
+        CheckBTState();
+    }
+    @Override
+    public void onStart() {
 
-/* The above snippet creates an instance of View.OnClickListener and wires the listener to the button
-using setOnClickListener(View.OnClickListener). As a result, the system executes the code you write in onClick(View) after the user presses the button. */
-        btnONOFF.setOnClickListener(new View.OnClickListener() { // View.OnClickListener() Interface definition for a callback to be invoked when a view is clicked.
-            @Override
-            public void onClick(View v) {
-                enableDisableBT();
+        super.onStart();
+        out.setText("\n ...In onStart()...");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        out.setText(address); // display the target MAC address
+
+        BluetoothDevice device = btAdapter.getRemoteDevice(address);
+
+        // initialize the phone bluetooth socket
+        try {
+            btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+        } catch (IOException e) {
+            AlertBox("Fatal Error","In onResume() and socket create failed"+e.getMessage());
+        }
+        btAdapter.cancelDiscovery();
+
+        // establish the connection
+        try {
+            btSocket.connect();
+            out.setText("\n...Connection established and data link opened...");
+        } catch (IOException e) {
+            try {
+                btSocket.close();
+            } catch (IOException e2) {
+                AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
             }
-        });
-    }
-    public void enableDisableBT(){
-        if(mBluetoothAdapter == null){ // device cant use bluetooth
-            Log.d(TAG,"enableDisableBT: does not have BT capabilities");
         }
-        if(!mBluetoothAdapter.isEnabled()){
-            Intent enableBTIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivity(enableBTIntent);
 
-            // debug purposes
-            IntentFilter BTintent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReciver1, BTintent);
+        out.setText("\n...Sending message to server...");
+
+        //create a data stream to talk to the server
+        try {
+            outStream = btSocket.getOutputStream();
+        } catch (IOException e) {
+            AlertBox("Fatal Error", "In onResume() and output stream creation failed:" + e.getMessage() + ".");
         }
-        if(mBluetoothAdapter.isEnabled()){
-            mBluetoothAdapter.disable();
-            // debug purposes
-            IntentFilter BTintent = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-            registerReceiver(mBroadcastReciver1, BTintent);
+
+        // create message to be send
+        String  message = "Hello world message\n";
+        // encode the message for transmission
+        byte[] msgBuffer = message.getBytes();
+
+        try {
+            outStream.write(msgBuffer);
+        } catch (IOException e) {
+            String msg = "In onResume() and an exception occurred during write: " + e.getMessage();
+            if (address.equals("00:00:00:00:00:00"))
+                msg = msg + ".\n\nUpdate your server address from 00:00:00:00:00:00 to the correct address on line 37 in the java code";
+            msg = msg +  ".\n\nCheck that the SPP UUID: " + MY_UUID.toString() + " exists on server.\n\n";
+
+            AlertBox("Fatal Error", msg);
+        }
+
+
+    }
+    @Override
+    public void onPause() {
+        super.onPause();
+
+        out.setText("\n...In onPause()...");
+
+        if (outStream != null) {
+            try {
+                outStream.flush();
+            } catch (IOException e) {
+                AlertBox("Fatal Error", "In onPause() and failed to flush output stream: " + e.getMessage() + ".");
+            }
+        }
+
+        try     {
+            btSocket.close();
+        } catch (IOException e2) {
+            AlertBox("Fatal Error", "In onPause() and failed to close socket." + e2.getMessage() + ".");
+        }
+    }
+    @Override
+    public void onStop() {
+        super.onStop();
+        out.setText("\n...In onStop()...");
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        out.setText("\n...In onDestroy()...");
+    }
+    // ------------------------- SUPPORT FUNCTIONS --------------------------
+
+    // Check for Bluetooth support and then check to make sure it is turned on
+    private void CheckBTState() {
+        if(btAdapter == null)
+        {
+            AlertBox("Fatal Error","Bluetooth is NOT supported in this device");
+        }
+        else {
+            //Prompt user to turn on Bluetooth
+            Intent enableBtIntent = new Intent(btAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
     }
 
-    public void btnEnableDisable_Discoverable(View view) {
-        Log.d(TAG, "btnEnableDisable_Discoverable: Making device discoverable for 300 seconds.");
-
-        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-        startActivity(discoverableIntent);
-
-        IntentFilter intentFilter = new IntentFilter(mBluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
-        registerReceiver(mBroadcastReceiver2,intentFilter);
+    public void AlertBox( String title, String message ){
+        new AlertDialog.Builder(this)
+                .setTitle( title )
+                .setMessage( message + " Press OK to exit." )
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface arg0, int arg1) {
+                        finish();
+                    }
+                }).show();
     }
+
+
 }
