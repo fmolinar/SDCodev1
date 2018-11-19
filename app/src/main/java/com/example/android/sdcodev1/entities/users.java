@@ -1,5 +1,8 @@
 package com.example.android.sdcodev1.entities;
 
+
+// Structure of the table for the SQLite DB
+
 public class users {
     private Integer id;
     private byte publicKey;

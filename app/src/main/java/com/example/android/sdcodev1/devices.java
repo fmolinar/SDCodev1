@@ -3,29 +3,49 @@ package com.example.android.sdcodev1;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.example.android.sdcodev1.Utilities.utils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
 
 
 
 
+
 public class devices extends AppCompatActivity {
+
+    // Bluetooth and Views
+    //ConexionSQLiteHelper connectionDataBase;
+    ConexionSQLiteHelper connectionDB = new ConexionSQLiteHelper(this,"db_Keys",null,1);
+
+    //
     TextView out;
     private static final int REQUEST_ENABLE_BT= 1;
+    private BluetoothDevice device; // added
     private BluetoothAdapter btAdapter = null;
     private BluetoothSocket btSocket  = null;
     private OutputStream outStream = null; // to be changed by textView
+    private InputStream inStream = null; // changed to receive data
+
+    int sdk = Integer.parseInt(Build.VERSION.SDK);
 
     // WELL known Java Server Side Parameters Universally unique identifier (UUID)
-    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private static UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
    // Insert your server's MAC address
     // THIS ONE HAS TO BE CORRECT, OTHERWISE IT WILL CRASH THE APPLICATION
     private static String address = "BC:A8:A6:B4:1A:DA";
@@ -34,14 +54,18 @@ public class devices extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_devices);
-
         out = (TextView) findViewById(R.id.out);
-        
         out.setText("\n ... In on Create()...");
-        
+
+        out.setText("\n ... Creating DB...");
+        startDB();
+        out.setText("... DataBase Created ...");
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
     }
+
+
+
     @Override
     public void onStart() {
 
@@ -54,15 +78,27 @@ public class devices extends AppCompatActivity {
         super.onResume();
         out.setText(address); // display the target MAC address
 
-        BluetoothDevice device = btAdapter.getRemoteDevice(address);
+        //BluetoothDevice device = btAdapter.getRemoteDevice(address);
+        device = btAdapter.getRemoteDevice(address);
 
         // initialize the phone bluetooth socket
-        try {
-            btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
-        } catch (IOException e) {
-            AlertBox("Fatal Error","In onResume() and socket create failed"+e.getMessage());
+        // before check the core android sdk and determine type of socket
+        if(sdk < 17)
+        {
+            try {
+                btSocket = device.createInsecureRfcommSocketToServiceRecord(MY_UUID);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }else{
+            try {
+                btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+            } catch (IOException e) {
+                AlertBox("Fatal Error","In onResume() and socket create failed"+e.getMessage());
+            }
+            btAdapter.cancelDiscovery();
         }
-        btAdapter.cancelDiscovery();
+
 
         // establish the connection
         try {
@@ -74,13 +110,18 @@ public class devices extends AppCompatActivity {
             } catch (IOException e2) {
                 AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
             }
+
         }
 
         out.setText("\n...Sending message to server...");
 
         //create a data stream to talk to the server
+
+        // this part is to send communication
         try {
+            // output stream object created here
             outStream = btSocket.getOutputStream();
+
         } catch (IOException e) {
             AlertBox("Fatal Error", "In onResume() and output stream creation failed:" + e.getMessage() + ".");
         }
@@ -88,6 +129,14 @@ public class devices extends AppCompatActivity {
         // create message to be send
         String  message = "Hello world message\n";
         // encode the message for transmission
+
+        // -------------- TEST -----------------
+        /* Retrieve values from the database*/
+        //connectionDataBase = new ConexionSQLiteHelper(getApplicationContext(),"db_Keys",null,1);
+        String messageDB = getPublicKey();
+        out.setText(messageDB);
+        //--------------------------------------
+
         byte[] msgBuffer = message.getBytes();
 
         try {
@@ -101,8 +150,40 @@ public class devices extends AppCompatActivity {
             AlertBox("Fatal Error", msg);
         }
 
+        // this part is to receive communication
+        InputStream tmpIn = null;
+        byte[] buffer = new byte[1024];
+        try {
+            tmpIn= btSocket.getInputStream();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+//        int bytes;
+//        String messageIn = "";
+//        char casting;
+//        int intVaueOfChar;
+//        try {
+//            while((intVaueOfChar = tmpIn.read(buffer,0,buffer.length)) !=  0)
+//            {
+//                casting = (char)intVaueOfChar;
+//                messageIn += casting;
+//            }
+//            tmpIn.close();
+//            out.setText(messageIn);
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+
+
 
     }
+
+
+
     @Override
     public void onPause() {
         super.onPause();
@@ -160,5 +241,67 @@ public class devices extends AppCompatActivity {
                 }).show();
     }
 
+    // ------------------------ SUPPORT FUNCTIONS FOR DATABASE ------------------------
 
+    private void startDB() {
+
+        int numberKey = 1;
+        String puKey = "Test";
+        String priKey = "Test 2";
+        String sharedKey = "Test 3";
+
+        /* Create the database SQLite */
+        // Create the connection to the DB
+        //ConexionSQLiteHelper connectionDB = new ConexionSQLiteHelper(this,"db_Keys",null,1);
+
+        // create the object of the DB that will be used to write/read to DB
+        SQLiteDatabase db = connectionDB.getWritableDatabase();
+
+        // Object that will format the data to be inputed in the DB
+        ContentValues values = new ContentValues();
+
+        // Insert data into the DATA BASE
+        values.put(utils.ID_FIELD,numberKey);
+        values.put(utils.PUBLIC_KEY_FIELD,puKey);
+        values.put(utils.PRIVATE_KEY_FIELD,priKey);
+        values.put(utils.SHARED_KEY_FIELD,sharedKey);
+
+        // check this statement
+        Long resultID = db.insert(utils.TABLE_KEY,utils.ID_FIELD,values);
+
+        Toast.makeText(getApplicationContext(),"ID Registry: "+resultID,Toast.LENGTH_SHORT).show();
+
+        // close the DB to avoid data corruption
+        db.close();
+
+    }
+    private String getPublicKey() {
+
+        SQLiteDatabase db = connectionDB.getReadableDatabase();
+        // Value to be return from query
+        String publicKey="";
+        // organize the columns of the table
+        String Columns[]={utils.ID_FIELD,utils.PUBLIC_KEY_FIELD,utils.PRIVATE_KEY_FIELD,utils.SHARED_KEY_FIELD};
+
+        try{
+            Cursor cursor=db.query(utils.TABLE_KEY,Columns,null,null,null,null,null);
+
+            int publicKeyInt;
+            publicKeyInt = cursor.getColumnIndex(utils.PUBLIC_KEY_FIELD);
+            cursor.moveToFirst();
+            publicKey = cursor.getString(publicKeyInt);
+
+            // close the DB to avoid data corruption
+            db.close();
+            cursor.close();
+            return publicKey;
+        }catch (Exception e){
+            Toast.makeText(getApplicationContext(),"Document doesnt exits",Toast.LENGTH_LONG).show();
+                    return "no record";
+        }
+
+
+
+
+    }
 }
