@@ -13,13 +13,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.android.sdcodev1.Utilities.utils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.UUID;
 
@@ -29,12 +32,14 @@ import java.util.UUID;
 
 public class devices extends AppCompatActivity {
 
-    // Bluetooth and Views
-    //ConexionSQLiteHelper connectionDataBase;
+
     ConexionSQLiteHelper connectionDB = new ConexionSQLiteHelper(this,"db_Keys",null,1);
+    //private final Handler mHandler; = new Handler();
+
 
     //
     TextView out;
+    TextView out2;
     private static final int REQUEST_ENABLE_BT= 1;
     private BluetoothDevice device; // added
     private BluetoothAdapter btAdapter = null;
@@ -50,16 +55,26 @@ public class devices extends AppCompatActivity {
     // THIS ONE HAS TO BE CORRECT, OTHERWISE IT WILL CRASH THE APPLICATION
     private static String address = "BC:A8:A6:B4:1A:DA";
 
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_devices);
-        out = (TextView) findViewById(R.id.out);
-        out.setText("\n ... In on Create()...");
+        out = (TextView)findViewById(R.id.out);
 
-        out.setText("\n ... Creating DB...");
+        // test
+        out2 = findViewById(R.id.out2);
+
+        out2.append("Hee");
+
+        //------------------
+
+        out.append("\n ... In on Create()...");
+
+        out.append("\n ... Creating DB...");
         startDB();
-        out.setText("... DataBase Created ...");
+        out.append("... DataBase Created ...");
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
     }
@@ -70,13 +85,14 @@ public class devices extends AppCompatActivity {
     public void onStart() {
 
         super.onStart();
-        out.setText("\n ...In onStart()...");
+        out.append("\n ...In onStart()...");
+
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        out.setText(address); // display the target MAC address
+        out.append(address); // display the target MAC address
 
         //BluetoothDevice device = btAdapter.getRemoteDevice(address);
         device = btAdapter.getRemoteDevice(address);
@@ -103,7 +119,7 @@ public class devices extends AppCompatActivity {
         // establish the connection
         try {
             btSocket.connect();
-            out.setText("\n...Connection established and data link opened...");
+            out.append("\n...Connection established and data link opened...");
         } catch (IOException e) {
             try {
                 btSocket.close();
@@ -113,7 +129,7 @@ public class devices extends AppCompatActivity {
 
         }
 
-        out.setText("\n...Sending message to server...");
+        out.append("\n...Sending message to server...");
 
         //create a data stream to talk to the server
 
@@ -133,10 +149,11 @@ public class devices extends AppCompatActivity {
         // -------------- TEST -----------------
         /* Retrieve values from the database*/
         //connectionDataBase = new ConexionSQLiteHelper(getApplicationContext(),"db_Keys",null,1);
-        String messageDB = getPublicKey();
-        out.setText(messageDB);
+        //String messageDB = getPublicKey();
+        //out.append(messageDB);
         //--------------------------------------
 
+        //byte[] msgBuffer = messageDB.getBytes();
         byte[] msgBuffer = message.getBytes();
 
         try {
@@ -149,33 +166,22 @@ public class devices extends AppCompatActivity {
 
             AlertBox("Fatal Error", msg);
         }
+//--------------------------------------------------------------------------------------
 
         // this part is to receive communication
-        InputStream tmpIn = null;
-        byte[] buffer = new byte[1024];
+        byte[] inmessage = new byte[1024];
+        int MessageFrom ;
         try {
-            tmpIn= btSocket.getInputStream();
+            inStream= btSocket.getInputStream();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            MessageFrom = inStream.read(inmessage);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-//        int bytes;
-//        String messageIn = "";
-//        char casting;
-//        int intVaueOfChar;
-//        try {
-//            while((intVaueOfChar = tmpIn.read(buffer,0,buffer.length)) !=  0)
-//            {
-//                casting = (char)intVaueOfChar;
-//                messageIn += casting;
-//            }
-//            tmpIn.close();
-//            out.setText(messageIn);
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
 
 
 
