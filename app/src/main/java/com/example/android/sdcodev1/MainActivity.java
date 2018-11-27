@@ -31,9 +31,9 @@ public class MainActivity extends AppCompatActivity {
         mstartlogo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent toy = new Intent(MainActivity.this,devices.class);
+                Intent toy = new Intent(MainActivity.this, devices.class);
 
-                startActivity(toy);
+                MainActivity.this.startActivity(toy);
 
             }
         });

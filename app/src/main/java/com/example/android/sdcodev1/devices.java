@@ -13,16 +13,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.android.sdcodev1.Utilities.utils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.UUID;
 
@@ -32,14 +29,12 @@ import java.util.UUID;
 
 public class devices extends AppCompatActivity {
 
-
+    // Bluetooth and Views
+    //ConexionSQLiteHelper connectionDataBase;
     ConexionSQLiteHelper connectionDB = new ConexionSQLiteHelper(this,"db_Keys",null,1);
-    //private final Handler mHandler; = new Handler();
-
 
     //
     TextView out;
-    TextView out2;
     private static final int REQUEST_ENABLE_BT= 1;
     private BluetoothDevice device; // added
     private BluetoothAdapter btAdapter = null;
@@ -51,32 +46,18 @@ public class devices extends AppCompatActivity {
 
     // WELL known Java Server Side Parameters Universally unique identifier (UUID)
     private static UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-   // Insert your server's MAC address
+    // Insert your server's MAC address
     // THIS ONE HAS TO BE CORRECT, OTHERWISE IT WILL CRASH THE APPLICATION
     private static String address = "BC:A8:A6:B4:1A:DA";
-
-
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_devices);
-        out = (TextView)findViewById(R.id.out);
-
-        // test
-        out2 = findViewById(R.id.out2);
-
-        out2.append("Hee");
-
-        //------------------
-
+        out = (TextView) findViewById(R.id.out);
         out.append("\n ... In on Create()...");
 
-        out.append("\n ... Creating DB...");
-        startDB();
-        out.append("... DataBase Created ...");
-        btAdapter = BluetoothAdapter.getDefaultAdapter();
-        CheckBTState();
+
     }
 
 
@@ -85,8 +66,10 @@ public class devices extends AppCompatActivity {
     public void onStart() {
 
         super.onStart();
+        startDB();
+        btAdapter = BluetoothAdapter.getDefaultAdapter();
+        CheckBTState();
         out.append("\n ...In onStart()...");
-
     }
 
     @Override
@@ -133,7 +116,7 @@ public class devices extends AppCompatActivity {
 
         //create a data stream to talk to the server
 
-        // this part is to send communication
+        // --------------------------------------------------------------   this part is to send communication ------------------------------------------------
         try {
             // output stream object created here
             outStream = btSocket.getOutputStream();
@@ -149,11 +132,10 @@ public class devices extends AppCompatActivity {
         // -------------- TEST -----------------
         /* Retrieve values from the database*/
         //connectionDataBase = new ConexionSQLiteHelper(getApplicationContext(),"db_Keys",null,1);
-        //String messageDB = getPublicKey();
-        //out.append(messageDB);
+        String messageDB = getPublicKey();
+        out.append(messageDB);
         //--------------------------------------
 
-        //byte[] msgBuffer = messageDB.getBytes();
         byte[] msgBuffer = message.getBytes();
 
         try {
@@ -166,11 +148,11 @@ public class devices extends AppCompatActivity {
 
             AlertBox("Fatal Error", msg);
         }
-//--------------------------------------------------------------------------------------
 
-        // this part is to receive communication
+        // -------------------------------------------------------------   this part is to receive communication   --------------------------------------------
         byte[] inmessage = new byte[1024];
         int MessageFrom ;
+
         try {
             inStream= btSocket.getInputStream();
         } catch (IOException e) {
@@ -178,6 +160,9 @@ public class devices extends AppCompatActivity {
         }
         try {
             MessageFrom = inStream.read(inmessage);
+            String text = new String(inmessage,0,MessageFrom-1);
+            out.append("\n" + text);
+
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -194,7 +179,7 @@ public class devices extends AppCompatActivity {
     public void onPause() {
         super.onPause();
 
-        out.setText("\n...In onPause()...");
+        out.append("\n...In onPause()...");
 
         if (outStream != null) {
             try {
@@ -213,13 +198,13 @@ public class devices extends AppCompatActivity {
     @Override
     public void onStop() {
         super.onStop();
-        out.setText("\n...In onStop()...");
+        out.append("\n...In onStop()...");
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        out.setText("\n...In onDestroy()...");
+        out.append("\n...In onDestroy()...");
     }
     // ------------------------- SUPPORT FUNCTIONS --------------------------
 
@@ -303,7 +288,7 @@ public class devices extends AppCompatActivity {
             return publicKey;
         }catch (Exception e){
             Toast.makeText(getApplicationContext(),"Document doesnt exits",Toast.LENGTH_LONG).show();
-                    return "no record";
+            return "no record";
         }
 
 
