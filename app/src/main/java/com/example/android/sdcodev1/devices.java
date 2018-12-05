@@ -40,7 +40,7 @@ public class devices extends AppCompatActivity {
     private BluetoothAdapter btAdapter = null;
     private BluetoothSocket btSocket  = null;
     private OutputStream outStream = null; // to be changed by textView
-    private InputStream inStream = null; // changed to receive data
+    private InputStream tmpIn = null; // changed to receive data
 
     int sdk = Integer.parseInt(Build.VERSION.SDK);
 
@@ -54,9 +54,8 @@ public class devices extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_devices);
-        out = (TextView) findViewById(R.id.out);
+        out = findViewById(R.id.out);
         out.append("\n ... In on Create()...");
-
 
     }
 
@@ -66,16 +65,10 @@ public class devices extends AppCompatActivity {
     public void onStart() {
 
         super.onStart();
-        startDB();
+        //startDB();
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
         out.append("\n ...In onStart()...");
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        out.append(address); // display the target MAC address
 
         //BluetoothDevice device = btAdapter.getRemoteDevice(address);
         device = btAdapter.getRemoteDevice(address);
@@ -103,14 +96,14 @@ public class devices extends AppCompatActivity {
         try {
             btSocket.connect();
             out.append("\n...Connection established and data link opened...");
-        } catch (IOException e) {
-            try {
+        } catch (IOException e) {}
+            /*try {
                 btSocket.close();
             } catch (IOException e2) {
                 AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
             }
 
-        }
+        }*/
 
         out.append("\n...Sending message to server...");
 
@@ -132,8 +125,8 @@ public class devices extends AppCompatActivity {
         // -------------- TEST -----------------
         /* Retrieve values from the database*/
         //connectionDataBase = new ConexionSQLiteHelper(getApplicationContext(),"db_Keys",null,1);
-        String messageDB = getPublicKey();
-        out.append(messageDB);
+        //String messageDB = getPublicKey();
+        //out.append(messageDB);
         //--------------------------------------
 
         byte[] msgBuffer = message.getBytes();
@@ -150,16 +143,23 @@ public class devices extends AppCompatActivity {
         }
 
         // -------------------------------------------------------------   this part is to receive communication   --------------------------------------------
+        try {
+            tmpIn= btSocket.getInputStream();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //ReadingThread myReadingThread = new ReadingThread();
+        //myReadingThread.start();
         byte[] inmessage = new byte[1024];
         int MessageFrom ;
 
         try {
-            inStream= btSocket.getInputStream();
+            tmpIn= btSocket.getInputStream();
         } catch (IOException e) {
             e.printStackTrace();
         }
         try {
-            MessageFrom = inStream.read(inmessage);
+            MessageFrom = tmpIn.read(inmessage);
             String text = new String(inmessage,0,MessageFrom-1);
             out.append("\n" + text);
 
@@ -168,8 +168,17 @@ public class devices extends AppCompatActivity {
             e.printStackTrace();
         }
 
+    }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        out.append(address); // display the target MAC address
 
+       /* try {
+            btSocket.connect();
+            out.append("\n...Connection established and data link opened...");
+        } catch (IOException e) {}*/
 
     }
 
@@ -295,4 +304,57 @@ public class devices extends AppCompatActivity {
 
 
     }
+    // --------------------------- Thread ------------------------
+    class  ReadingThread extends Thread{
+        public ReadingThread(){
+
+        }
+
+        public void run(){
+            out.append("\n   IN RUN   \n");
+            int bytes;
+            byte[] buffer = new byte[1024];
+            while (true) {
+
+
+
+                try {
+
+                    int c = tmpIn.read();
+//
+                    if(c != -1)
+                    {
+                        bytes = tmpIn.read(buffer);            //read bytes from input buffer
+                        String readMessage = new String(buffer, 0, bytes);
+                        //Send the obtained bytes to the UI Activity via handler
+                        out.setText("\n" + readMessage);
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                //try {
+//                    //bytes = tmpIn.read(buffer);            //read bytes from input buffer
+//                     int c = tmpIn.read();
+////
+//                    if(c != -1)
+//                     {
+//                         bytes = tmpIn.read(buffer);            //read bytes from input buffer
+//                         String readMessage = new String(buffer, 0, bytes);
+//                         //Send the obtained bytes to the UI Activity via handler
+//                         out.setText("\n" + readMessage);
+//                     }
+
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                    break;
+              //  }
+                //out.append("reading buffer\n");
+            }
+        }
+    }
+
+
+
 }
