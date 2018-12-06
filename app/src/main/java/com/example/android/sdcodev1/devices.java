@@ -1,5 +1,6 @@
 package com.example.android.sdcodev1;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -11,6 +12,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
@@ -33,7 +35,8 @@ public class devices extends AppCompatActivity {
     //ConexionSQLiteHelper connectionDataBase;
     ConexionSQLiteHelper connectionDB = new ConexionSQLiteHelper(this,"db_Keys",null,1);
 
-    //
+
+    // variables for the bluetooth and threads
     TextView out;
     private static final int REQUEST_ENABLE_BT= 1;
     private BluetoothDevice device; // added
@@ -50,21 +53,37 @@ public class devices extends AppCompatActivity {
     // THIS ONE HAS TO BE CORRECT, OTHERWISE IT WILL CRASH THE APPLICATION
     private static String address = "BC:A8:A6:B4:1A:DA";
 
+    // Handler
+    @SuppressLint("HandlerLeak")
+    private final Handler handler  = new Handler(){
+        @Override
+        public void handleMessage(Message msg){
+            String message = (String)msg.obj;
+            // initialize textView
+            TextView out2 = findViewById(R.id.out2);
+            out2.append(message);
+        }
+    };
+
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_devices);
         out = findViewById(R.id.out);
-        out.append("\n ... In on Create()...");
+
 
     }
 
 
 
+
+    @SuppressLint("HandlerLeak")
     @Override
     public void onStart() {
 
         super.onStart();
+
         //startDB();
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
@@ -148,8 +167,11 @@ public class devices extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //ReadingThread myReadingThread = new ReadingThread();
-        //myReadingThread.start();
+//        ReadingThread myReadingThread = new ReadingThread();
+//        myReadingThread.start();
+
+
+        out.append("\n ... In on Start()...");
         byte[] inmessage = new byte[1024];
         int MessageFrom ;
 
@@ -173,12 +195,8 @@ public class devices extends AppCompatActivity {
     @Override
     public void onResume() {
         super.onResume();
-        out.append(address); // display the target MAC address
 
-       /* try {
-            btSocket.connect();
-            out.append("\n...Connection established and data link opened...");
-        } catch (IOException e) {}*/
+
 
     }
 
@@ -307,34 +325,21 @@ public class devices extends AppCompatActivity {
     // --------------------------- Thread ------------------------
     class  ReadingThread extends Thread{
         public ReadingThread(){
-
+            out.append("\n   in Thread   \n");
         }
 
         public void run(){
-            out.append("\n   IN RUN   \n");
+            // initialize the handler to send messages to main thread
+            String message = "hello from run \n";
+            Message msg = Message.obtain();
+
+
+
+            out.append("\n   in runnable method   \n");
             int bytes;
             byte[] buffer = new byte[1024];
             while (true) {
-
-
-
-                try {
-
-                    int c = tmpIn.read();
-//
-                    if(c != -1)
-                    {
-                        bytes = tmpIn.read(buffer);            //read bytes from input buffer
-                        String readMessage = new String(buffer, 0, bytes);
-                        //Send the obtained bytes to the UI Activity via handler
-                        out.setText("\n" + readMessage);
-                    }
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                //try {
+//                try {
 //                    //bytes = tmpIn.read(buffer);            //read bytes from input buffer
 //                     int c = tmpIn.read();
 ////
@@ -345,12 +350,20 @@ public class devices extends AppCompatActivity {
 //                         //Send the obtained bytes to the UI Activity via handler
 //                         out.setText("\n" + readMessage);
 //                     }
-
+//
 //                } catch (IOException e) {
 //                    e.printStackTrace();
 //                    break;
-              //  }
-                //out.append("reading buffer\n");
+//                }
+
+                msg.obj = message;
+                msg.setTarget(handler);
+                msg.sendToTarget();
+                try {
+                    Thread.sleep(20000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
