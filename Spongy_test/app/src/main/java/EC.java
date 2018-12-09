@@ -92,10 +92,10 @@ public class EC {
         KeyPair pairA = kpgen.generateKeyPair();
         KeyPair pairB = kpgen.generateKeyPair();
 
-        out.append("UserA: " + pairA.getPrivate());
-        out.append("UserA: " + pairA.getPublic());
-        out.append("UserB:   " + pairB.getPrivate());
-        out.append("UserB:   " + pairB.getPublic());
+        System.out.println("UserA: " + pairA.getPrivate());
+        System.out.println("UserA: " + pairA.getPublic());
+        System.out.println("UserB:   " + pairB.getPrivate());
+        System.out.println("UserB:   " + pairB.getPublic());
 
 //User A
         byte [] dataPrvA = savePrivateKey(pairA.getPrivate());
@@ -106,7 +106,7 @@ public class EC {
 
         System.out.println("UserA Prv: " + bytesToHex(dataPrvA));
         System.out.println("UserA Pub: " + bytesToHex(dataPubA));
-         System.out.println("UserB Prv: " + bytesToHex(dataPrvB));
+        System.out.println("UserB Prv: " + bytesToHex(dataPrvB));
         System.out.println("UserB Pub: " + bytesToHex(dataPubB));
 
 
