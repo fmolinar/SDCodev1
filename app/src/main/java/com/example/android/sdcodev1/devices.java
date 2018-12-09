@@ -80,11 +80,6 @@ public class devices extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_devices);
         out = findViewById(R.id.out);
-        try {
-            generateKeys();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
@@ -92,7 +87,7 @@ public class devices extends AppCompatActivity {
 
         super.onStart();
 
-        //startDB();
+        startDB();
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
         out.append("\n ...In onStart()...");
@@ -135,43 +130,6 @@ public class devices extends AppCompatActivity {
         // -------------------------------------- Key Generation ------------------
 
 
-
-//        Security.addProvider(new BouncyCastleProvider());
-//        KeyPairGenerator kpgen = null;
-//        try {
-//            kpgen = KeyPairGenerator.getInstance("ECDH", "BC");
-//        } catch (NoSuchAlgorithmException e) {
-//            e.printStackTrace();
-//        } catch (NoSuchProviderException e) {
-//            e.printStackTrace();
-//        }
-//        try {
-//            kpgen.initialize(new ECGenParameterSpec("prime192v1"), new SecureRandom());
-//        } catch (InvalidAlgorithmParameterException e) {
-//            e.printStackTrace();
-//        }
-//        KeyPair pairA = kpgen.generateKeyPair();
-//        KeyPair pairB = kpgen.generateKeyPair();
-//
-//        //User A
-//        byte [] dataPrvA = new byte[0];
-//        try {
-//            dataPrvA = ECDH.savePrivateKey(pairA.getPrivate());
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        byte [] dataPubA = new byte[0];
-//        try {
-//            dataPubA = ECDH.savePublicKey(pairA.getPublic());
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//
-//        // print public and private keys
-//        out.append("UserA Prv: " + Util.bytesToHex(dataPrvA));
-//        out.append("\nUserA Pub: " + Util.bytesToHex(dataPubA));
-
-
         // --------------------------------------------------------------   this part is to send communication ------------------------------------------------
         try {
             // output and input stream object created here
@@ -189,8 +147,8 @@ public class devices extends AppCompatActivity {
         // -------------- TEST -----------------
         /* Retrieve values from the database*/
         //connectionDataBase = new ConexionSQLiteHelper(getApplicationContext(),"db_Keys",null,1);
-        //String messageDB = getPublicKey();
-        //out.append(messageDB);
+        String messageDB = getPublicKey();
+        out.append(messageDB);
         //--------------------------------------
 
         boolean flag = true;
@@ -296,10 +254,10 @@ public class devices extends AppCompatActivity {
 
     private void startDB() {
 
-        int numberKey = 1;
-        String puKey = "Test";
+        int numberKey = 2;
+        String puKey = "Test with public key";
         String priKey = "Test 2";
-        String sharedKey = "Test 3";
+        String sharedKey = "Test 4";
 
         /* Create the database SQLite */
         // Create the connection to the DB
@@ -316,6 +274,7 @@ public class devices extends AppCompatActivity {
         values.put(utils.PUBLIC_KEY_FIELD,puKey);
         values.put(utils.PRIVATE_KEY_FIELD,priKey);
         values.put(utils.SHARED_KEY_FIELD,sharedKey);
+        //values.put(utils.TIME_STAMP_FIELD,"datetime()");
 
         // check this statement
         Long resultID = db.insert(utils.TABLE_KEY,utils.ID_FIELD,values);
@@ -326,6 +285,32 @@ public class devices extends AppCompatActivity {
         db.close();
 
     }
+    //************************** SETTERS FOR DATABASE *********************************
+    private void setPublicKey(String pukey){
+        int numberKey = 1;
+        String puKey = "Test";
+
+        // create the object of the DB that will be used to write/read to DB
+        SQLiteDatabase db = connectionDB.getWritableDatabase();
+
+        // Object that will format the data to be inputed in the DB
+        ContentValues values = new ContentValues();
+
+        // Insert data into the DATA BASE
+        values.put(utils.ID_FIELD,numberKey);
+        values.put(utils.PUBLIC_KEY_FIELD,puKey);
+
+        // check this statement
+        Long resultID = db.insert(utils.TABLE_KEY,utils.ID_FIELD,values);
+
+        Toast.makeText(getApplicationContext(),"ID Registry: "+resultID,Toast.LENGTH_SHORT).show();
+
+        // close the DB to avoid data corruption
+        db.close();
+    }
+
+    //************************** GETTERS FOR DATABASE *********************************
+    //                           GET PUBLIC KEY
     private String getPublicKey() {
 
         SQLiteDatabase db = connectionDB.getReadableDatabase();
@@ -351,8 +336,59 @@ public class devices extends AppCompatActivity {
             return "no record";
         }
 
+    }
+    //                             GET PRIVATE KEY
+    private String getPrivateKey() {
 
+        SQLiteDatabase db = connectionDB.getReadableDatabase();
+        // Value to be return from query
+        String privateKey="";
+        // organize the columns of the table
+        String Columns[]={utils.ID_FIELD,utils.PUBLIC_KEY_FIELD,utils.PRIVATE_KEY_FIELD,utils.SHARED_KEY_FIELD};
 
+        try{
+            Cursor cursor=db.query(utils.TABLE_KEY,Columns,null,null,null,null,null);
+
+            int privateKeyInt;
+            privateKeyInt = cursor.getColumnIndex(utils.PRIVATE_KEY_FIELD);
+            cursor.moveToFirst();
+            privateKey = cursor.getString(privateKeyInt);
+
+            // close the DB to avoid data corruption
+            db.close();
+            cursor.close();
+            return privateKey;
+        }catch (Exception e){
+            Toast.makeText(getApplicationContext(),"Document doesnt exits",Toast.LENGTH_LONG).show();
+            return "no record";
+        }
+
+    }
+    //                            GET SHARED KEY
+    private String getSharedKey() {
+
+        SQLiteDatabase db = connectionDB.getReadableDatabase();
+        // Value to be return from query
+        String sharedKey="";
+        // organize the columns of the table
+        String Columns[]={utils.ID_FIELD,utils.PUBLIC_KEY_FIELD,utils.PRIVATE_KEY_FIELD,utils.SHARED_KEY_FIELD};
+
+        try{
+            Cursor cursor=db.query(utils.TABLE_KEY,Columns,null,null,null,null,null);
+
+            int sharedKeyInt;
+            sharedKeyInt = cursor.getColumnIndex(utils.SHARED_KEY_FIELD);
+            cursor.moveToFirst();
+            sharedKey = cursor.getString(sharedKeyInt);
+
+            // close the DB to avoid data corruption
+            db.close();
+            cursor.close();
+            return sharedKey;
+        }catch (Exception e){
+            Toast.makeText(getApplicationContext(),"Document doesnt exits",Toast.LENGTH_LONG).show();
+            return "no record";
+        }
 
     }
     // --------------------------- Support functions for AES -----------------

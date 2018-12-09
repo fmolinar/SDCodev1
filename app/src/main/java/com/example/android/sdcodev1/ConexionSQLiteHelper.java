@@ -33,6 +33,7 @@ public class ConexionSQLiteHelper extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         // if the application is reinstalled, check if there exits a newer version of the table keys
+        //db.execSQL("ALTER TABLE keys ADD COLUMN TEXT DEFAULT 0");
         db.execSQL("DROP TABLE IF EXISTS keys");
         onCreate(db);
     }
