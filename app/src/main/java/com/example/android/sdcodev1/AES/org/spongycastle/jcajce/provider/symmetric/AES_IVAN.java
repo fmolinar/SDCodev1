@@ -1,4 +1,8 @@
-package com.example.android.sdcodev1.AES;
+package com.example.android.sdcodev1.AES.org.spongycastle.jcajce.provider.symmetric;
+
+
+import com.example.android.sdcodev1.AES.Util;
+
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -6,7 +10,7 @@ import java.util.*;
 import java.io.*;
 //import ECDH.byteToHex;
 
-class AES {
+public class AES_IVAN{
 
     public static final int
             ROUNDS = 12,        // AES has 10-14 rounds
@@ -96,7 +100,7 @@ class AES {
     }
 
     /** Construct AES object. */
-    public AES() {
+    public AES_IVAN() {
     }
 
     /** return number of rounds for a given AES key size. */
@@ -322,10 +326,8 @@ class AES {
 
 
     public String aesRun(String data, int mode)  {
-        //Ivan
-        File file1= new File("C:/Users/ivanvasquez/Desktop/SeniorDesign/MAC.txt");
-        file1.getParentFile().mkdirs();
-        AES aes = this;
+
+        AES_IVAN aes = this;
         if(data.length()/16 > ((int) data.length()/16)) {
             int rest = data.length()-((int) data.length()/16)*16;
             for(int i=0; i<rest; i++)

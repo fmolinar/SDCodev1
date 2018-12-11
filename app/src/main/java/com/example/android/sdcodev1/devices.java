@@ -20,22 +20,35 @@ import android.widget.Toast;
 
 import com.example.android.sdcodev1.AES.ECDH;
 import com.example.android.sdcodev1.AES.Util;
+import com.example.android.sdcodev1.AES.org.spongycastle.jcajce.provider.symmetric.AES_IVAN;
 import com.example.android.sdcodev1.Utilities.utils;
 
+import org.spongycastle.jcajce.provider.symmetric.AES;
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
+import java.util.Arrays;
 import java.util.UUID;
 
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
+import static com.example.android.sdcodev1.AES.ECDH.doECDH;
+import static com.example.android.sdcodev1.AES.ECDH.savePrivateKey;
+import static com.example.android.sdcodev1.AES.ECDH.savePublicKey;
+import static com.example.android.sdcodev1.AES.Util.byteArrayToString;
+import static com.example.android.sdcodev1.AES.Util.bytesToHex;
+import static com.example.android.sdcodev1.AES.Util.toHEX;
 
 public class devices extends AppCompatActivity {
     static {
@@ -86,8 +99,6 @@ public class devices extends AppCompatActivity {
     public void onStart() {
 
         super.onStart();
-
-        startDB();
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
         out.append("\n ...In onStart()...");
@@ -119,76 +130,163 @@ public class devices extends AppCompatActivity {
             btSocket.connect();
             out.append("\n...Connection established and data link opened...");
         } catch (IOException e) {}
-            /*try {
-                btSocket.close();
-            } catch (IOException e2) {
-                AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
-            }
 
-        }*/
 
         // -------------------------------------- Key Generation ------------------
 
+
+/////////////////////////EC Diffie-Hellman//////////////////////////////
+            Security.addProvider(new BouncyCastleProvider());
+//Security.insertProviderAt(arg0, arg1)
+        KeyPairGenerator kpgen = null;
+        try {
+            kpgen = KeyPairGenerator.getInstance("ECDH", "SC");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchProviderException e) {
+            e.printStackTrace();
+        }
+        try {
+            kpgen.initialize(new ECGenParameterSpec("secp384r1"), new SecureRandom());
+        } catch (InvalidAlgorithmParameterException e) {
+            e.printStackTrace();
+        }
+        KeyPair pairA = kpgen.generateKeyPair();
+        KeyPair pairB = kpgen.generateKeyPair();
+
+        //User A
+        byte [] dataPrvA = new byte[0];
+        byte[] dataPubB = new byte[0];
+        try {
+            dataPrvA = savePrivateKey(pairA.getPrivate());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        byte [] dataPubA = new byte[0];
+        try {
+            dataPubA = savePublicKey(pairA.getPublic());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        /*try {
+            byte [] dataPrvB = savePrivateKey(pairB.getPrivate());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            dataPubB = savePublicKey(pairB.getPublic());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }*/
+        AES_IVAN aes= new AES_IVAN();
+        String data="00112233445566778899aabbccddeeff";
+        String k="000102030405060708090a0b0c0d0e0f";
+        aes.setKey(k);
+        String encrypted=aes.Encrypt(data);
+        //String hex= Util.toHEX(encrypted.getBytes()).replace(" ","");
+        //System.out.println("Encrypted Message: "+hex);
+
+        String macA=aes.getMAC();
+        //macA = macA + "\n";
+        startDB();
+
+////////////////////////////Preforms the ECDH key sharing/////////
+            String keyA ="";
+            String keyB;
 
         // --------------------------------------------------------------   this part is to send communication ------------------------------------------------
         try {
             // output and input stream object created here
             outStream = btSocket.getOutputStream();
-            //tmpIn= btSocket.getInputStream();
 
         } catch (IOException e) {
             AlertBox("Fatal Error", "In onResume() and output stream creation failed:" + e.getMessage() + ".");
         }
 
-        // create message to be send
-        String  message = "Hello world message\n";
-        // encode the message for transmission
 
-        // -------------- TEST -----------------
+        // -------------- TEST  to get public key from database-----------------
         /* Retrieve values from the database*/
         //connectionDataBase = new ConexionSQLiteHelper(getApplicationContext(),"db_Keys",null,1);
         String messageDB = getPublicKey();
-        out.append(messageDB);
-        //--------------------------------------
 
-        boolean flag = true;
-        //while(flag) {
-        byte[] msgBuffer = message.getBytes();
-        try {
-            outStream.write(msgBuffer);
-            outStream.flush();
+        // **************************************** Sending and Receiving Data ********************************************
+        //-------------------------------------- this part id to send communication --------------------------------------
+        
+        //boolean flag = true;
+        boolean flag=true;
+        boolean flagIn = true;
+        String getNewMac = "";
+        String publicKey = Arrays.toString(dataPubA) + "\n";
+        String m = "hi \n";
+        byte[] msgBuffer = new byte[1024];
 
-        } catch (IOException e) {
-            String msg = "In onResume() and an exception occurred during write: " + e.getMessage(); // application breaks here
-            if (address.equals("00:00:00:00:00:00"))
-                msg = msg + ".\n\nUpdate your server address from 00:00:00:00:00:00 to the correct address on line 37 in the java code";
-            msg = msg +  ".\n\nCheck that the SPP UUID: " + MY_UUID.toString() + " exists on server.\n\n";
-            AlertBox("Fatal Error", msg);
-        }
+        while(flagIn) {
+
+            msgBuffer = m.getBytes();
+
+            dataPubA = publicKey.getBytes();
+
+//        if(flag == false) {
+            try {
+                outStream.write(msgBuffer);
+                outStream.flush();
+
+            } catch (IOException e) {
+                String msg = "In onResume() and an exception occurred during write: " + e.getMessage(); // application breaks here
+                if (address.equals("00:00:00:00:00:00"))
+                    msg = msg + ".\n\nUpdate your server address from 00:00:00:00:00:00 to the correct address on line 37 in the java code";
+                msg = msg + ".\n\nCheck that the SPP UUID: " + MY_UUID.toString() + " exists on server.\n\n";
+                AlertBox("Fatal Error", msg);
+            }
+        //}
+//        else {
+//            try {
+//                outStream.write(msgBuffer);
+//                outStream.flush();
+//                flag = false;
+//            } catch (IOException e) {
+//                String msg = "In onResume() and an exception occurred during write: " + e.getMessage(); // application breaks here
+//                if (address.equals("00:00:00:00:00:00"))
+//                    msg = msg + ".\n\nUpdate your server address from 00:00:00:00:00:00 to the correct address on line 37 in the java code";
+//                msg = msg + ".\n\nCheck that the SPP UUID: " + MY_UUID.toString() + " exists on server.\n\n";
+//                AlertBox("Fatal Error", msg);
+//            }
+//        }
         // -------------------------------------------------------------   this part is to receive communication   --------------------------------------------
         //ReadingThread myReadingThread = new ReadingThread();
         //myReadingThread.start();
+
         byte[] inmessage = new byte[1024];
         int MessageFrom ;
+
         try {
             tmpIn= btSocket.getInputStream();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        try {
-            MessageFrom = tmpIn.read(inmessage);
-            String text = new String(inmessage,0,MessageFrom-1);
-            out.append("\n" + text);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+               //If Android app doesn't have workstation public key
+            try {
+                MessageFrom = tmpIn.read(inmessage);
+                String text = new String(inmessage, 0, MessageFrom - 1);
+                macA=text;
+                m =macA; //text;
+                        //preformKeyShare();
+                m = m + "\n";
 
-        try {
-                Thread.sleep(5000);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            try {
+                Thread.sleep(10000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        //} // while loop
+        } // while loop
+        //*********************************************************************************************************************************************
     }
 
     @Override
@@ -254,7 +352,7 @@ public class devices extends AppCompatActivity {
 
     private void startDB() {
 
-        int numberKey = 2;
+        int numberKey = 4;
         String puKey = "Test with public key";
         String priKey = "Test 2";
         String sharedKey = "Test 4";
@@ -289,6 +387,7 @@ public class devices extends AppCompatActivity {
     private void setPublicKey(String pukey){
         int numberKey = 1;
         String puKey = "Test";
+        String targetID = "4";
 
         // create the object of the DB that will be used to write/read to DB
         SQLiteDatabase db = connectionDB.getWritableDatabase();
@@ -297,13 +396,35 @@ public class devices extends AppCompatActivity {
         ContentValues values = new ContentValues();
 
         // Insert data into the DATA BASE
-        values.put(utils.ID_FIELD,numberKey);
-        values.put(utils.PUBLIC_KEY_FIELD,puKey);
+        values.put(utils.PUBLIC_KEY_FIELD,pukey);
 
         // check this statement
-        Long resultID = db.insert(utils.TABLE_KEY,utils.ID_FIELD,values);
+        db.update(utils.TABLE_KEY,values,utils.ID_FIELD+"="+targetID,null);
+        //Long resultID = db.insert(utils.TABLE_KEY,utils.ID_FIELD,values);
 
-        Toast.makeText(getApplicationContext(),"ID Registry: "+resultID,Toast.LENGTH_SHORT).show();
+        Toast.makeText(getApplicationContext(),"Updating public key registry: ",Toast.LENGTH_SHORT).show();
+
+        // close the DB to avoid data corruption
+        db.close();
+    }
+    private void setPrivateKey(String prikey){
+
+        String targetID = "4";
+
+        // create the object of the DB that will be used to write/read to DB
+        SQLiteDatabase db = connectionDB.getWritableDatabase();
+
+        // Object that will format the data to be inputed in the DB
+        ContentValues values = new ContentValues();
+
+        // Insert data into the DATA BASE
+        values.put(utils.PRIVATE_KEY_FIELD,prikey);
+
+        // check this statement
+        db.update(utils.TABLE_KEY,values,null,null);
+        //Long resultID = db.insert(utils.TABLE_KEY,utils.ID_FIELD,values);
+
+        Toast.makeText(getApplicationContext(),"Updating public key registry: ",Toast.LENGTH_SHORT).show();
 
         // close the DB to avoid data corruption
         db.close();
@@ -351,7 +472,7 @@ public class devices extends AppCompatActivity {
 
             int privateKeyInt;
             privateKeyInt = cursor.getColumnIndex(utils.PRIVATE_KEY_FIELD);
-            cursor.moveToFirst();
+            cursor.moveToLast();
             privateKey = cursor.getString(privateKeyInt);
 
             // close the DB to avoid data corruption
@@ -419,34 +540,35 @@ public class devices extends AppCompatActivity {
 //        System.out.println("UserA Pub: " + Util.bytesToHex(dataPubA));
 
     }
+   /* public void preformKeyShare(byte[]dataPrvA,byte[] dataPubB) throws Exception {
 
+        String keyA=doECDH("UserA SharedKey: ", dataPrvA, dataPubB);
+        AES_IVAN aes = new AES_IVAN();             // init AES encrypted class
+        String data = "00112233445566778899aabbccddeeff";
+        //out.append("Original text : " + data);
+        byte[] in = new byte[data.length()];
+        //User A
+        aes.setKey(keyA);  // choose password
+        String encrypted = aes.Encrypt(data);
+        String hex = toHEX(encrypted.getBytes()).replace(" ", "");
+        //out.append("Encrypted text UserA: " + hex);
+
+        //Store MAC code
+        String mac =aes.getMAC() + "\n";
+        setPublicKey(mac);
+
+    }*/
+
+    //}
     // --------------------------- Thread ------------------------------------
     class  ReadingThread extends Thread{
         private final InputStream mmInStream;
-
         public ReadingThread(){
             out.append("\n   in Thread   \n");
             InputStream tmpIn = null;
             try {
                 tmpIn = btSocket.getInputStream();
-
-            } catch (IOException e) {
-
-            }
-//            byte[] inmessage = new byte[1024];
-//            int MessageFrom ;
-//            try {
-//                tmpIn= btSocket.getInputStream();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            try {
-//                MessageFrom = tmpIn.read(inmessage);
-//                String text = new String(inmessage,0,MessageFrom-1);
-//                out.append("\n" + text);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
+            } catch (IOException e) {     }
                 mmInStream = tmpIn;
             }
 
@@ -454,14 +576,10 @@ public class devices extends AppCompatActivity {
             // initialize the handler to send messages to main thread
             String message = "hello from run \n";
             Message msg = Message.obtain();
-
             out.append("\n   in runnable method   \n");
-
             do {
-
                 byte[] inmessage = new byte[1024];
                 int MessageFrom;
-
                 try {
                     MessageFrom = mmInStream.read(inmessage);
                     String text = new String(inmessage, 0, MessageFrom - 1);
@@ -470,7 +588,6 @@ public class devices extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
                 msg.obj = message;
                 msg.setTarget(handler);
                 msg.sendToTarget();

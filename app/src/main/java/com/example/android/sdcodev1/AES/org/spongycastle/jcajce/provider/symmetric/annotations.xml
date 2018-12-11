@@ -1,0 +1,5 @@
+<root>
+    <item name='org.spongycastle.jcajce.provider.symmetric.AES'>
+        <annotation name='java.lang.Deprecated' />
+    </item>
+</root>
